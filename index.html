@@ -8,6 +8,13 @@
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    // Ensure pdfjsLib is available globally
+    if (typeof window['pdfjs-dist/build/pdf'] !== 'undefined') {
+      window.pdfjsLib = window['pdfjs-dist/build/pdf'];
+    }
+  </script>
 
   <link rel="stylesheet" href="styles.css?v=2">
 </head>

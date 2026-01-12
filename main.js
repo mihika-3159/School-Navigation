@@ -219,15 +219,18 @@ function scaleXYToOverlay(x, y) {
   const overlay = $('#overlay');
   const rect = overlay.getBoundingClientRect();
 
-  // If we are in PDF mode, we need to map the CSV's SVG coordinate space (680.64x480)
-  // to the PDF's point space (510x360).
-  // Scaling ratio: 0.75
+  // The CSV coordinates (x, y) are based on the SVG viewbox: 680.64 x 480
+  const SVG_WIDTH = 680.64;
+  const SVG_HEIGHT = 480;
+
   let targetX = x;
   let targetY = y;
 
   if (isPdfMode) {
-    targetX = x * (mapNaturalSize.width / 680.64);
-    targetY = y * (mapNaturalSize.height / 480);
+    // mapNaturalSize is the PDF page size in points (e.g., 510x360)
+    // We scale the SVG-based coordinates to the PDF space
+    targetX = x * (mapNaturalSize.width / SVG_WIDTH);
+    targetY = y * (mapNaturalSize.height / SVG_HEIGHT);
   }
 
   const scaleX = rect.width / mapNaturalSize.width;
