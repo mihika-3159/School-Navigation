@@ -9,10 +9,10 @@
 
 const FLOOR_ORDER = ['G', '1', '2', '3'];
 const FLOOR_FILES = {
-  'G': 'school-nav-data/svg/ground-level-nodes.svg',
-  '1': 'school-nav-data/svg/first-level-nodes.svg',
-  '2': 'school-nav-data/svg/second-level-nodes.svg',
-  '3': 'school-nav-data/svg/third-level-nodes.svg'
+  'G': 'school-nav-data/images/floor_G.png',
+  '1': 'school-nav-data/images/floor_1.png',
+  '2': 'school-nav-data/images/floor_2.png',
+  '3': 'school-nav-data/images/floor_3.png'
 };
 const NODES_CSV = 'school-nav-data/nodes_all.csv';
 const EDGES_CSV = 'school-nav-data/edges_all.csv';
@@ -22,16 +22,7 @@ let edges = [];
 let graph = {};
 let currentFloor = 'G';
 let lastPath = null;
-let mapBaseIsSvg = false; // computed at load
-let mapNaturalSize = { width: 1000, height: 800 }; // fallback, updated if image/svg viewbox known
-
-// PDF floor mapping: Keys match FLOOR_ORDER, Values are 1-based page indices
-const PDF_URL = 'school-nav-data/pdf/floorplans.pdf';
-const PDF_PAGE_MAP = { 'G': 1, '1': 2, '2': 3, '3': 4 };
-// Configure PDF.js worker
-if (typeof pdfjsLib !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-}
+let mapNaturalSize = { width: 680.64, height: 480 }; // Fixed to match nodes dataset precisely
 
 // helpers
 const $ = s => document.querySelector(s);
@@ -164,105 +155,17 @@ async function loadMapBase(floorKey) {
   container.innerHTML = '';
 
   try {
-    // If we have a special PDF mapping for this floor, prefer PDF rendering
-    if (PDF_PAGE_MAP[floorKey] && typeof pdfjsLib !== 'undefined') {
-      const loadingTask = pdfjsLib.getDocument(PDF_URL);
-      const pdf = await loadingTask.promise;
-      const pageNum = PDF_PAGE_MAP[floorKey];
-      const page = await pdf.getPage(pageNum);
-
-      // We render at a higher scale (e.g. 2.0 or 3.0) for crispiness, but
-      // the coordinates in nodes.csv must map to the UN-SCALED ViewPort size.
-      const scale = 2.5;
-      const viewport = page.getViewport({ scale: scale });
-
-      // Update natural size for marker scaling (using un-scaled viewport dimensions)
-      const baseViewport = page.getViewport({ scale: 1.0 });
-      mapNaturalSize = { width: baseViewport.width, height: baseViewport.height };
-
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-      canvas.height = viewport.height;
-      canvas.width = viewport.width;
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-      canvas.style.objectFit = 'contain';
-
-      const renderContext = {
-        canvasContext: context,
-        viewport: viewport
-      };
-
-      await page.render(renderContext).promise;
-
-      container.appendChild(canvas);
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = `Floor ${floorKey}`;
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.objectFit = 'contain';
+    img.onload = () => {
+      // Natural size is locked to 680.64 x 480 for coordinate alignment
       drawMarkersForCurrentFloor();
-      return;
-    }
-
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('not found');
-    const text = await res.text();
-
-    if (text.trim().startsWith('<svg')) {
-      const parser = new DOMParser();
-      const svgDoc = parser.parseFromString(text, 'image/svg+xml');
-      const svgEl = svgDoc.querySelector('svg');
-
-      if (svgEl) {
-        // 1. Get scale info
-        const vb = svgEl.getAttribute('viewBox');
-        if (vb) {
-          const parts = vb.split(/\s+/).map(Number);
-          if (parts.length === 4) mapNaturalSize = { width: parts[2], height: parts[3] };
-        } else {
-          const w = parseFloat(svgEl.getAttribute('width')) || mapNaturalSize.width;
-          const h = parseFloat(svgEl.getAttribute('height')) || mapNaturalSize.height;
-          mapNaturalSize = { width: w, height: h };
-        }
-
-        // 2. Extract image (more robustly)
-        let imgSrc = null;
-        const allInnerImages = Array.from(svgEl.querySelectorAll('image'));
-        for (const iImg of allInnerImages) {
-          const src = iImg.getAttribute('xlink:href') || iImg.getAttribute('href');
-          if (src && src.startsWith('data:image')) {
-            imgSrc = src;
-            break;
-          }
-        }
-
-        if (imgSrc) {
-          const img = document.createElement('img');
-          img.src = imgSrc;
-          img.alt = `Floor ${floorKey}`;
-          img.style.width = '100%';
-          img.style.height = '100%';
-          img.style.objectFit = 'contain';
-          img.onload = () => { drawMarkersForCurrentFloor(); };
-          container.appendChild(img);
-        } else {
-          // Fallback: inject raw SVG
-          container.innerHTML = text;
-          // Apply a specific class to the container to help CSS hiding
-          container.classList.add('inlined-svg-mode');
-          setTimeout(drawMarkersForCurrentFloor, 50);
-        }
-      }
-    } else {
-      // It's a direct image file
-      const img = document.createElement('img');
-      img.src = url;
-      img.alt = `Floor ${floorKey}`;
-      img.style.width = '100%';
-      img.style.height = '100%';
-      img.style.objectFit = 'contain';
-      img.onload = () => {
-        mapNaturalSize = { width: img.naturalWidth || 1000, height: img.naturalHeight || 800 };
-        drawMarkersForCurrentFloor();
-      };
-      container.appendChild(img);
-    }
+    };
+    container.appendChild(img);
   } catch (err) {
     console.warn('Map base load error:', url, err);
     container.innerHTML = `<div class="text-sm text-red-500 p-4">Map error: ${url}</div>`;
