@@ -309,34 +309,41 @@ function drawMarkersForCurrentFloor() {
 }
 
 function drawRoute(path) {
-  // draw full route scaled to overlay
   const overlay = $('#overlay');
-  // remove existing route lines and markers first
+  // Remove existing route elements
   [...overlay.querySelectorAll('.route-line, .route-shadow, .route-marker')].forEach(n => n.remove());
 
   if (!path || path.length === 0) return;
 
-  // compute scaled points
-  const pts = path.map(id => {
-    const n = getNode(id);
-    const { cx, cy } = scaleXYToOverlay(n.x, n.y);
-    return `${cx},${cy}`;
-  }).join(' ');
+  // Render segments only if both nodes are on the current floor
+  for (let i = 0; i < path.length - 1; i++) {
+    const id1 = path[i], id2 = path[i + 1];
+    const n1 = getNode(id1), n2 = getNode(id2);
+    if (!n1 || !n2) continue;
 
-  // shadow
-  const shadow = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-  shadow.setAttribute('points', pts);
-  shadow.setAttribute('class', 'route-shadow');
-  overlay.appendChild(shadow);
+    // Only draw if both nodes are on the current floor
+    if (String(n1.floor) === String(currentFloor) && String(n2.floor) === String(currentFloor)) {
+      const p1 = scaleXYToOverlay(n1.x, n1.y);
+      const p2 = scaleXYToOverlay(n2.x, n2.y);
+      const pts = `${p1.cx},${p1.cy} ${p2.cx},${p2.cy}`;
 
-  const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-  line.setAttribute('points', pts);
-  line.setAttribute('class', 'route-line');
-  overlay.appendChild(line);
+      const shadow = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+      shadow.setAttribute('points', pts);
+      shadow.setAttribute('class', 'route-shadow');
+      overlay.appendChild(shadow);
 
-  // markers for start and end (drawn at actual node positions)
-  const s = getNode(path[0]), e = getNode(path[path.length - 1]);
-  if (s) {
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+      line.setAttribute('points', pts);
+      line.setAttribute('class', 'route-line');
+      overlay.appendChild(line);
+    }
+  }
+
+  // Draw start/end markers only if they are on the current floor
+  const sId = path[0], eId = path[path.length - 1];
+  const s = getNode(sId), e = getNode(eId);
+
+  if (s && String(s.floor) === String(currentFloor)) {
     const p = scaleXYToOverlay(s.x, s.y);
     const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     c.setAttribute('cx', p.cx); c.setAttribute('cy', p.cy); c.setAttribute('r', 9);
@@ -344,7 +351,7 @@ function drawRoute(path) {
     c.setAttribute('class', 'route-marker');
     overlay.appendChild(c);
   }
-  if (e) {
+  if (e && String(e.floor) === String(currentFloor)) {
     const p = scaleXYToOverlay(e.x, e.y);
     const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     c.setAttribute('cx', p.cx); c.setAttribute('cy', p.cy); c.setAttribute('r', 10);
@@ -505,8 +512,11 @@ $('#nextFloor').addEventListener('click', () => {
 async function setFloor(f) {
   if (!FLOOR_FILES[f]) return;
   currentFloor = f;
+  $('#overlay').innerHTML = ''; // Force clear overlay on floor switch
   $('#floorName').textContent = `${floorLabel(f)} (${f})`;
   await loadMapBase(f);
+  // Redraw path if exists to show only relevant segments
+  if (typeof lastPath !== 'undefined' && lastPath) drawRoute(lastPath);
 }
 
 /* --------------- Startup --------------- */

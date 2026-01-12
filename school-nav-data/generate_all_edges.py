@@ -20,7 +20,7 @@ floors = {
 }
 
 # Widen limit: connect all visible nodes within this range
-MAX_DIST = 300  
+MAX_DIST = 100  
 # Number of nearest neighbors to connect (for Rooms/Stairs)
 ROOM_NEIGHBORS = 10
 # For corridors, we ignore a fixed count and rely on MAX_DIST + Line of Sight
@@ -164,7 +164,7 @@ def has_collision(a, b, image, scale=(1, 1), collision_desc="wall"):
     # Threshold for "darkness". 0 is black, 255 is white.
     # Walls are black lines. 
     # Probe found walls at ~114 brightness. Setting higher to catch them.
-    DARK_THRESHOLD = 160 
+    DARK_THRESHOLD = 180 
     
     pixels = image.load()
     
