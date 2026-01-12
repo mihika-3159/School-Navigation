@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>School Navigator — Elegant</title>
+  <title>School Navigator</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
@@ -17,16 +17,9 @@
       <header class="flex items-center justify-between mb-6">
         <div>
           <h1 class="text-3xl font-semibold text-navy">School Navigator</h1>
-          <p class="mt-1 text-sm text-slate-500">Type to search start & destination, pick a map, and we’ll route you — elegantly.</p>
+          <p class="mt-1 text-sm text-slate-500">Type to search start & destination, pick a map, and we’ll route you.</p>
         </div>
-        <div class="text-right">
-          <div class="inline-flex items-center gap-2">
-            <div class="text-xs text-slate-500">Palette</div>
-            <div class="w-6 h-6 rounded bg-white border border-slate-200"></div>
-            <div class="w-6 h-6 rounded bg-navy"></div>
-            <div class="w-6 h-6 rounded bg-gold"></div>
-          </div>
-        </div>
+        <!-- Palette removed -->
       </header>
 
       <main class="grid lg:grid-cols-3 gap-6">
@@ -51,15 +44,6 @@
             <div class="mt-4 text-sm text-slate-600 flex items-center gap-2">
               <input id="accessibleToggle" type="checkbox" class="h-4 w-4" />
               <label for="accessibleToggle" class="text-sm">Avoid stairs (wheelchair)</label>
-            </div>
-
-            <div class="mt-3 text-xs text-slate-400 flex items-center gap-2">
-              <input id="includeCorridors" type="checkbox" class="h-4 w-4" />
-              <label for="includeCorridors" class="text-xs">Show corridors in search (not recommended)</label>
-            </div>
-
-            <div class="mt-4 text-xs text-slate-400">
-              Tip: You can scan the entrance QR like <code>?start=entrance_G</code> to prefill start.
             </div>
           </div>
 
@@ -91,7 +75,7 @@
           </div>
         </aside>
 
-        <!-- Map + Directions -->
+        <!-- Map -->
         <section class="lg:col-span-2 bg-white border rounded-2xl p-4 shadow-sm">
           <div class="flex items-start gap-6">
             <div class="flex-1">
@@ -102,14 +86,6 @@
 
                 <!-- overlay svg for route + markers -->
                 <svg id="overlay" class="absolute inset-0 w-full h-full pointer-events-auto"></svg>
-              </div>
-
-              <div class="mt-4 bg-white rounded-lg border p-3">
-                <div class="flex items-center justify-between">
-                  <div class="text-sm font-medium text-navy">Directions</div>
-                  <div class="text-xs text-slate-400">Step-by-step</div>
-                </div>
-                <ol id="directionsList" class="mt-3 list-decimal list-inside text-sm text-slate-700 space-y-2 max-h-48 overflow-auto"></ol>
               </div>
             </div>
 

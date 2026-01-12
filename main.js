@@ -289,8 +289,8 @@ function drawMarkersForCurrentFloor() {
 function drawRoute(path) {
   // draw full route scaled to overlay
   const overlay = $('#overlay');
-  // remove existing route lines first
-  [...overlay.querySelectorAll('.route-line, .route-shadow')].forEach(n => n.remove());
+  // remove existing route lines and markers first
+  [...overlay.querySelectorAll('.route-line, .route-shadow, .route-marker')].forEach(n => n.remove());
 
   if (!path || path.length === 0) return;
 
@@ -319,6 +319,7 @@ function drawRoute(path) {
     const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     c.setAttribute('cx', p.cx); c.setAttribute('cy', p.cy); c.setAttribute('r', 9);
     c.setAttribute('fill', 'var(--navy)'); c.setAttribute('stroke', 'white'); c.setAttribute('stroke-width', 2);
+    c.setAttribute('class', 'route-marker');
     overlay.appendChild(c);
   }
   if (e) {
@@ -326,6 +327,7 @@ function drawRoute(path) {
     const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     c.setAttribute('cx', p.cx); c.setAttribute('cy', p.cy); c.setAttribute('r', 10);
     c.setAttribute('fill', '#ef4444'); c.setAttribute('stroke', 'white'); c.setAttribute('stroke-width', 2);
+    c.setAttribute('class', 'route-marker');
     overlay.appendChild(c);
   }
 }
@@ -382,7 +384,7 @@ function generateDirections(path) {
 /* --------------- Search (typeahead) --------------- */
 function filterNodesForSearch(query, role) { // role = 'start'|'end'
   query = (query || '').trim().toLowerCase();
-  const includeCorridors = !!$('#includeCorridors').checked;
+  const includeCorridors = false; // Checkbox removed
   return nodes.filter(n => {
     if (String(n.floor) !== String(currentFloor)) return false; // only show same-floor matches first
     if (!includeCorridors && (n.type || '').toLowerCase() === 'corridor') return false;
@@ -445,8 +447,9 @@ $('#routeBtn').addEventListener('click', () => {
   lastPath = path;
   // if path includes nodes on other floors, keep current floor as floor of start
   drawRoute(path);
-  const directions = generateDirections(path);
-  $('#directionsList').innerHTML = directions.map(s => `<li>${s}</li>`).join('');
+  // Directions panel removed per user request
+  // const directions = generateDirections(path);
+  // $('#directionsList').innerHTML = directions.map(s => `<li>${s}</li>`).join('');
   $('#summaryText').textContent = `${path.length} nodes • ${path.map(id => getNode(id).floor).filter((v, i, a) => a.indexOf(v) === i).join(' → ')}`;
   // update URL params
   const params = new URLSearchParams();

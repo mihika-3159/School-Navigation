@@ -28,9 +28,33 @@ button:focus { outline: 3px solid rgba(200,155,60,0.15); outline-offset: 2px; }
 .route-line { fill:none; stroke:var(--gold); stroke-width:6; stroke-linecap:round; stroke-linejoin:round; }
 .route-shadow { fill:none; stroke:rgba(2,6,23,0.06); stroke-width:12; stroke-linecap:round; }
 
-/* small responsive tweak */
-@media (max-width: 900px) {
-  .map-frame { min-height: 320px; }
-  aside.w-64 { display:none; }
+/* map image styling */
+#mapBase svg image {
+  filter: grayscale(100%) brightness(1.05) contrast(0.9);
+  mix-blend-mode: multiply;
+}
+
+#mapBase {
+  background-color: #fafafa;
+}
+
+/* route animation */
+.route-line {
+  fill:none;
+  stroke: var(--gold);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 12, 12;
+  animation: flow 1.5s linear infinite;
+}
+
+@keyframes flow {
+  from { stroke-dashoffset: 24; }
+  to { stroke-dashoffset: 0; }
+}
+
+.route-marker {
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
 }
 

@@ -20,9 +20,9 @@ floors = {
 }
 
 # Widen limit: connect all visible nodes within this range
-MAX_DIST = 150  
+MAX_DIST = 300  
 # Number of nearest neighbors to connect (for Rooms/Stairs)
-ROOM_NEIGHBORS = 2
+ROOM_NEIGHBORS = 10
 # For corridors, we ignore a fixed count and rely on MAX_DIST + Line of Sight
 
 # ---------------- HELPERS ----------------
@@ -221,7 +221,7 @@ for floor_key, file_info in floors.items():
 
     # Convert to list of dicts for easier iteration
     corridors = df[df["type"] == "corridor"].to_dict("records")
-    rooms = df[df["type"] == "room"].to_dict("records")
+    rooms = df[df["type"].isin(["room", "reception", "entrance"])].to_dict("records")
     stairs = df[df["type"] == "stair"].to_dict("records")
     lifts = df[df["type"] == "lift"].to_dict("records")
     
@@ -238,46 +238,81 @@ for floor_key, file_info in floors.items():
                 break # heuristic cut-off
             
             # Check collision
-            if has_collision(r, cand, floor_image, scale=scale_factors):
-                continue
-                
-            all_edges.append(connect(r, cand))
-            all_edges.append(connect(cand, r))
-            connected_count += 1
+            collision = has_collision(r, cand, floor_image, scale=scale_factors)
+            is_targeted_zone = (r["x"] < 100 or r["x"] > 550)
+            
+            if not collision:
+                all_edges.append(connect(r, cand))
+                all_edges.append(connect(cand, r))
+                connected_count += 1
+            elif is_targeted_zone and connected_count == 0:
+                 # Prefer targeted fallback first
+                 all_edges.append(connect(r, cand))
+                 all_edges.append(connect(cand, r))
+                 connected_count += 1
+                 print(f"  [TARGETED FALLBACK] Connecting {r['name']} ({r['id']}) despite collision.")
+
             if connected_count >= ROOM_NEIGHBORS:
                 break
-                
+        
+        # Last Resort: If still isolated, connect to the absolute nearest corridor regardless of collision
+        if connected_count == 0 and candidates:
+            best = candidates[0]
+            all_edges.append(connect(r, best))
+            all_edges.append(connect(best, r))
+            print(f"  [GLOBAL FALLBACK] Forcing connection for {r['name']} ({r['id']})")
+
     # 2. Corridors → Neighbors in range (Line of Sight)
     # We want to form a dense graph but valid one.
     print(f"  Processing {len(corridors)} corridor nodes...")
+    corridor_edge_counts = {c["id"]: 0 for c in corridors}
+    
+    # First pass: Valid line-of-sight connections
     for i, c in enumerate(corridors):
-        for o in corridors:
-            if c["id"] == o["id"]:
-                continue
-            
+        for o in corridors[i+1:]:
             dist = distance(c, o)
             if dist <= MAX_DIST:
-                # Check collision (Line of Sight)
                 if not has_collision(c, o, floor_image, scale=scale_factors):
                      all_edges.append(connect(c, o))
+                     all_edges.append(connect(o, c))
+                     corridor_edge_counts[c["id"]] += 1
+                     corridor_edge_counts[o["id"]] += 1
+
+    # Second pass: Fallback for isolated corridors
+    for c in corridors:
+        if corridor_edge_counts[c["id"]] == 0:
+            # Connect to nearest corridor regardless of collision
+            others = [o for o in corridors if o["id"] != c["id"]]
+            if others:
+                best = min(others, key=lambda o: distance(c, o))
+                all_edges.append(connect(c, best))
+                all_edges.append(connect(best, c))
+                print(f"  [CORRIDOR FALLBACK] Forcing connection for {c['id']}")
 
     # 3. Stairs/Lifts → Nearest Corridors
     for s in stairs + lifts:
         candidates = sorted(corridors, key=lambda c: distance(s, c))
         connected_count = 0
         for cand in candidates:
-            # slightly larger leeway for stairs?
-            if distance(s, cand) > MAX_DIST + 20:
+            dist = distance(s, cand)
+            if dist > MAX_DIST + 50: # slight extra leeway
                 break
                 
-            if has_collision(s, cand, floor_image, scale=scale_factors):
-                continue
+            collision = has_collision(s, cand, floor_image, scale=scale_factors)
+            if not collision:
+                all_edges.append(connect(s, cand))
+                all_edges.append(connect(cand, s))
+                connected_count += 1
             
-            all_edges.append(connect(s, cand))
-            all_edges.append(connect(cand, s))
-            connected_count += 1
-            if connected_count >= 1: 
+            if connected_count >= 2: # try to connect to 2 corridors for redundancy
                 break
+        
+        # Fallback for isolated stairs/lifts
+        if connected_count == 0 and candidates:
+            best = candidates[0]
+            all_edges.append(connect(s, best))
+            all_edges.append(connect(best, r))
+            print(f"  [GLOBAL FALLBACK] Forcing connection for transport {s.get('name', s['id'])}")
                 
     # Add to global nodes list for vertical processing
     all_nodes.append(df)
