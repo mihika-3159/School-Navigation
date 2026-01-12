@@ -177,9 +177,16 @@ async function loadMapBase(floorKey) {
           mapNaturalSize = { width: w, height: h };
         }
 
-        // 2. Extract image
-        const innerImg = svgEl.querySelector('image');
-        const imgSrc = innerImg ? (innerImg.getAttribute('xlink:href') || innerImg.getAttribute('href')) : null;
+        // 2. Extract image (more robustly)
+        let imgSrc = null;
+        const allInnerImages = Array.from(svgEl.querySelectorAll('image'));
+        for (const iImg of allInnerImages) {
+          const src = iImg.getAttribute('xlink:href') || iImg.getAttribute('href');
+          if (src && src.startsWith('data:image')) {
+            imgSrc = src;
+            break;
+          }
+        }
 
         if (imgSrc) {
           const img = document.createElement('img');
@@ -193,6 +200,8 @@ async function loadMapBase(floorKey) {
         } else {
           // Fallback: inject raw SVG
           container.innerHTML = text;
+          // Apply a specific class to the container to help CSS hiding
+          container.classList.add('inlined-svg-mode');
           setTimeout(drawMarkersForCurrentFloor, 50);
         }
       }
@@ -255,9 +264,9 @@ function drawMarkersForCurrentFloor() {
 
     // Color coding
     let fill = 'var(--navy)';
-    if (n.type === 'stair') fill = 'orange';
-    if (n.type === 'lift') fill = 'purple';
-    if (n.type === 'entrance') fill = 'green';
+    if (n.type === 'stair') fill = '#f97316'; // orange
+    if (n.type === 'lift') fill = '#a855f7';  // purple
+    if (n.type === 'entrance') fill = '#22c55e'; // green
 
     circle.setAttribute('fill', fill);
     circle.setAttribute('class', 'marker');
