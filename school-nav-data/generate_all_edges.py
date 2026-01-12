@@ -163,7 +163,8 @@ def has_collision(a, b, image, scale=(1, 1), collision_desc="wall"):
     consecutive_hits = 0
     # Threshold for "darkness". 0 is black, 255 is white.
     # Walls are black lines. 
-    DARK_THRESHOLD = 100 
+    # Probe found walls at ~114 brightness. Setting higher to catch them.
+    DARK_THRESHOLD = 160 
     
     pixels = image.load()
     
