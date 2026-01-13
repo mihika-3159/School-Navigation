@@ -376,38 +376,107 @@ function floorLabel(k) { return { 'G': 'Ground', '1': 'First', '2': 'Second', '3
 function generateDirections(path) {
   const steps = [];
   if (!path || path.length === 0) return steps;
-  for (let i = 0; i < path.length; i++) {
-    const id = path[i];
-    const node = getNode(id);
-    const prev = i > 0 ? getNode(path[i - 1]) : null;
-    const nxt = i < path.length - 1 ? getNode(path[i + 1]) : null;
 
-    if (!prev && nxt) { steps.push(`Start at ${node.name || node.id}.`); continue; }
-    if (prev && node.floor !== prev.floor) {
-      const transport = (node.type === 'lift' || prev.type === 'lift') ? 'Take the lift' : 'Take the stairs';
-      steps.push(`${transport} from ${floorLabel(prev.floor)} to ${floorLabel(node.floor)}.`);
-      continue;
-    }
-    if (prev && nxt) {
-      if (node.type === 'stair' || node.type === 'lift') { steps.push(`At ${node.name || node.id}, ${node.type === 'lift' ? 'use the lift' : 'use the stairs'}.`); continue; }
-      const a = angleBetween(prev, node, nxt);
-      if (a < 20) {
-        const last = steps[steps.length - 1] || '';
-        if (!last.includes('Continue straight') && !last.startsWith('Start')) steps.push('Continue straight.');
-      } else {
-        const v1x = prev.x - node.x, v1y = prev.y - node.y;
-        const v2x = nxt.x - node.x, v2y = nxt.y - node.y;
-        const cross = v1x * v2y - v1y * v2x;
-        const dir = cross > 0 ? 'Turn left' : 'Turn right';
-        steps.push(`${dir} at ${node.name || node.id}.`);
+  // Constants for relative turn logic
+  const TURN_THRESHOLD = 30; // degrees
+
+  const getDirLabel = (prev, curr, nxt) => {
+    const v1x = curr.x - prev.x, v1y = curr.y - prev.y;
+    const v2x = nxt.x - curr.x, v2y = nxt.y - curr.y;
+    // Standard cross product in screen space (Y down)
+    // cross > 0 => Right, cross < 0 => Left
+    const cross = v1x * v2y - v1y * v2x;
+    const angle = angleBetween(prev, curr, nxt);
+
+    if (angle < TURN_THRESHOLD) return 'straight';
+    return cross > 0 ? 'Right' : 'Left';
+  };
+
+  const getLandmarkName = (id) => {
+    const n = getNode(id);
+    if (!n) return id;
+    if (n.type !== 'corridor') return n.name || n.id;
+    // If it's a corridor, try to find a nearby landmark (within 20 units)
+    const nearby = nodes.find(other =>
+      other.id !== n.id &&
+      other.floor === n.floor &&
+      other.type !== 'corridor' &&
+      Math.hypot(other.x - n.x, other.y - n.y) < 20
+    );
+    return nearby ? `near ${nearby.name || nearby.id}` : null;
+  };
+
+  // 1. Initial position
+  const startNode = getNode(path[0]);
+  steps.push(`Start at ${startNode.name || startNode.id}.`);
+
+  let currentPos = 0;
+  while (currentPos < path.length - 1) {
+    const currId = path[currentPos];
+    const currNode = getNode(currId);
+
+    // Look ahead for turns or landmarks
+    let nextTurnPos = -1;
+    let nextFloorPos = -1;
+
+    for (let j = currentPos + 1; j < path.length - 1; j++) {
+      const p = getNode(path[j - 1]), c = getNode(path[j]), n = getNode(path[j + 1]);
+
+      // Floor change detection
+      if (c.floor !== p.floor) {
+        nextFloorPos = j;
+        break;
+      }
+
+      const dir = getDirLabel(p, c, n);
+      if (dir !== 'straight') {
+        nextTurnPos = j;
+        break;
       }
     }
+
+    if (nextFloorPos !== -1) {
+      const p = getNode(path[nextFloorPos - 1]);
+      const n = getNode(path[nextFloorPos]);
+      const transport = (n.type === 'lift' || p.type === 'lift') ? 'lift' : 'stairs';
+      steps.push(`Take the ${transport} to ${floorLabel(n.floor)}.`);
+      currentPos = nextFloorPos;
+      continue;
+    }
+
+    if (nextTurnPos !== -1) {
+      const turnNode = getNode(path[nextTurnPos]);
+      const p = getNode(path[nextTurnPos - 1]);
+      const n = getNode(path[nextTurnPos + 1]);
+      const dir = getDirLabel(p, turnNode, n);
+
+      const landmark = getLandmarkName(path[nextTurnPos]);
+      const locStr = landmark ? `at ${landmark}` : '';
+
+      if (nextTurnPos > currentPos + 1) {
+        steps.push(`Continue straight until ${landmark || 'the junction'}.`);
+      }
+      steps.push(`Turn ${dir} ${locStr}.`);
+      currentPos = nextTurnPos;
+    } else {
+      // No more turns on this floor, go to end (or next floor handled above)
+      const endOnFloorPos = path.findIndex((id, idx) => idx > currentPos && getNode(id).floor !== currNode.floor);
+      const targetPos = (endOnFloorPos === -1) ? path.length - 1 : endOnFloorPos - 1;
+
+      if (targetPos > currentPos) {
+        const targetNode = getNode(path[targetPos]);
+        const landmark = getLandmarkName(path[targetPos]);
+        steps.push(`Continue straight until ${landmark || targetNode.name || 'your destination'}.`);
+      }
+      currentPos = targetPos;
+      if (currentPos === path.length - 1) break;
+    }
   }
-  steps.push(`You have arrived at ${getNode(path[path.length - 1]).name || path[path.length - 1]}.`);
-  // collapse consecutive continues
-  const out = [];
-  for (const s of steps) { if (s === 'Continue straight.' && out[out.length - 1] === 'Continue straight.') continue; out.push(s); }
-  return out;
+
+  const endNode = getNode(path[path.length - 1]);
+  steps.push(`You have arrived at ${endNode.name || endNode.id}.`);
+
+  return steps;
 }
 
 /* --------------- Search (typeahead) --------------- */
@@ -474,11 +543,16 @@ $('#routeBtn').addEventListener('click', () => {
 
   if (!path || path.length === 0) { alert('No route found — check edges.'); return; }
   lastPath = path;
-  // if path includes nodes on other floors, keep current floor as floor of start
   drawRoute(path);
-  // Directions panel removed per user request
-  // const directions = generateDirections(path);
-  // $('#directionsList').innerHTML = directions.map(s => `<li>${s}</li>`).join('');
+
+  const directions = generateDirections(path);
+  $('#directionsList').innerHTML = directions.map(s => `
+    <li class="relative pl-6 pb-2 last:pb-0">
+      <span class="absolute left-0 top-1 w-4 h-4 rounded-full bg-slate-100 text-[10px] flex items-center justify-center font-bold text-slate-500">${directions.indexOf(s) + 1}</span>
+      ${s}
+    </li>
+  `).join('');
+
   $('#summaryText').textContent = `${path.length} nodes • ${path.map(id => getNode(id).floor).filter((v, i, a) => a.indexOf(v) === i).join(' → ')}`;
   // update URL params
   const params = new URLSearchParams();
