@@ -20,7 +20,7 @@ floors = {
 }
 
 # Widen limit: connect all visible nodes within this range
-MAX_DIST = 100  
+MAX_DIST = 150  
 # Number of nearest neighbors to connect (for Rooms/Stairs)
 ROOM_NEIGHBORS = 10
 # For corridors, we ignore a fixed count and rely on MAX_DIST + Line of Sight
