@@ -241,10 +241,6 @@ function scaleXYToOverlay(x, y) {
     // We scale the SVG-based coordinates to the PDF space
     targetX = x * (mapNaturalSize.width / SVG_WIDTH);
     targetY = y * (mapNaturalSize.height / SVG_HEIGHT);
-
-    // Apply Y-offset correction to align with PDF corridor positions
-    // The PDF rendering has a slight vertical offset that needs correction
-    targetY = targetY + 8; // Adjust downward by 8 points
   }
 
   const scaleX = rect.width / mapNaturalSize.width;
