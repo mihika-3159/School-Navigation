@@ -96,6 +96,12 @@ function aStar(start, goal, opts = {}) {
   const restricted = opts.restricted !== false; // Default true (corridor-only)
 
   if (!graph[start] || !graph[goal]) return [];
+
+  // Check if start and goal are on the same floor
+  const startNode = getNode(start);
+  const goalNode = getNode(goal);
+  const sameFloor = startNode && goalNode && startNode.floor === goalNode.floor;
+
   const open = new Set([start]);
   const came = {};
   const gScore = {}, fScore = {};
@@ -115,8 +121,12 @@ function aStar(start, goal, opts = {}) {
     for (const e of graph[current] || []) {
       if (avoidStairs && e.accessible === false) continue;
 
-      // Restriction: Only traverse if neighbor is corridor OR neighbor is goal
       const nodeTo = getNode(e.to);
+
+      // CRITICAL: Block floor changes if start and goal are on same floor
+      if (sameFloor && nodeTo && nodeTo.floor !== startNode.floor) continue;
+
+      // Restriction: Only traverse if neighbor is corridor OR neighbor is goal
       if (restricted && !isCorridor(nodeTo) && e.to !== goal) continue;
 
       const tentative = gScore[current] + e.weight;
