@@ -651,6 +651,11 @@ async function init() {
     // redraw markers on window resize (keeps scale correct)
     window.addEventListener('resize', () => { drawMarkersForCurrentFloor(); });
 
+    // Initialize floor finder feature (additive - doesn't modify existing logic)
+    if (typeof initFloorFinder === 'function') {
+      initFloorFinder();
+    }
+
     // Run Acceptance Test
     setTimeout(runAcceptanceTest, 2000);
 
